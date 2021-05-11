@@ -8,7 +8,7 @@
 
     <div
       v-for="user in userInfo"
-      :key="user.id"
+      :key="user.index"
       class="list__participants"
     >
       <img :src="user.image" alt="">
@@ -35,23 +35,93 @@ export default {
   data() {
     return {
       areUsersLoaded: false,
-      userInfo: ''
+      userInfo: '',
+      users: '',
+      maxPerPage: 20
     }
   },
 
-  created () {
+  mounted () {
+    this.$nextTick(() => {
+      window.addEventListener('scroll', this.onScroll)
+      this.onScroll()
+    });
+  },
+
+  created() {
     this.getInfo()
   },
 
+  beforeDestroy() {
+    window.removeEventListener('scroll', this.onScroll);
+  },
+
   methods: {
+    onScroll() {
+       window.onscroll = () => {
+        const bottomOfWindow = (window.innerHeight + window.scrollY) >= document.body.offsetHeight
+
+         if (bottomOfWindow) {
+           this.areUsersLoaded = true
+         } else {
+            setTimeout(() => {
+              // тут надо как-то подгружать все это дело по 20 штук
+            }, 200);
+           this.areUsersLoaded = false
+         }
+       }
+    },
+
     async getInfo() {
       const { data: { results } } = await axios.get( 'https://randomuser.me/api/?results=50&?inc=picture,name,email,registered&noinfo')
-      this.userInfo = results.map(el => {
-        // let time = new Date(el.registered.date)
-        // time = time.getDate()
 
-        // let rightNow = new Date()
-        // rightNow = rightNow.getDate()
+      // sorting by time
+      const participants = results.sort((a, b) => b.registered.date > a.registered.date ? 1 : -1)
+      // fist call
+      this.sortUsers(participants)
+      
+      // update info each minute
+      setInterval(() => {
+        this.sortUsers(participants)
+      }, 60000)
+    },
+
+    sortUsers(users) {
+      const rightNow = new Date()
+      const currentYear = rightNow.getFullYear()
+      const currentDate = rightNow.getDate()
+      const currentHour = rightNow.getHours()
+      const currentMinutes = rightNow.getMinutes()
+
+      // adjusting array
+      this.userInfo = users.map(el => {
+        let time
+        const userTime = new Date(el.registered.date)
+
+        if (userTime.getFullYear() !== currentYear) {
+          // not in this year
+          time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })} ${userTime.getFullYear()}`
+        } else {
+          // today
+          if (currentDate === userTime.getDate()) {
+            if (currentHour === userTime.getHours()){
+              if (currentMinutes === userTime.getMinutes()) {
+                time = 'just now'
+              } else {
+                // recently
+                time = `${59 - userTime.getMinutes()}m ago`
+              }
+            } else {
+              // during the day
+              time = `${23 - userTime.getHours()}h ago`
+            }
+          } else if(currentDate - userTime.getDate() === 1) {
+            time = 'yesterday'
+          } else {
+            // not recently , but in this year
+            time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })}`
+          }
+        }
 
         return {
           id: el.index,
@@ -59,7 +129,7 @@ export default {
           firstName: el.name.first,
           lastName: el.name.last,
           email: el.email,
-          time: el.registered.date
+          time
         }
       })
     }

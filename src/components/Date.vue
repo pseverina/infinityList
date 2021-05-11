@@ -4,7 +4,9 @@
 			Left until the draw
 		</div>
 		<div class="date__time">
-			3 h
+			{{ currentHour }}h 
+			{{ currentMinutes }}m
+			{{ currentSeconds }}s
 		</div>
 	</div>
 </template>
@@ -13,6 +15,29 @@
 
 export default {
   name: 'Date',
+
+	data() {
+		return {
+			currentHour: '',
+			currentMinutes: '',
+			currentSeconds: ''
+		}
+	},
+
+	created() {
+		this.checkTime()
+	},
+
+	methods: {
+		checkTime() {
+			setInterval(() => {
+				const date = new Date()
+				this.currentHour = 23 - date.getHours()
+				this.currentMinutes = 59 - date.getMinutes()
+				this.currentSeconds = 59 - date.getSeconds()
+			}, 1000)
+		}
+	}
 }
 
 </script>
@@ -35,6 +60,7 @@ export default {
 	&__time {
 		font-size: 56px;
 		line-height: 80px;
+		text-transform: uppercase;
 	}
 }
 
