@@ -21,7 +21,7 @@
       v-if="areUsersLoaded"
       class="list__last-message"
     >
-      All users loaded
+      <img src="../assets/check_mark.svg" class="list__last-message-img" alt=''>All users loaded
     </div>
   </div>
 </template>
@@ -37,8 +37,13 @@ export default {
       areUsersLoaded: false,
       userInfo: '',
       users: '',
-      maxPerPage: 20
+      maxPerPage: 20,
+      observer: null
     }
+  },
+
+  beforeMount() {
+    this.getInfo()
   },
 
   mounted () {
@@ -46,10 +51,6 @@ export default {
       window.addEventListener('scroll', this.onScroll)
       this.onScroll()
     });
-  },
-
-  created() {
-    this.getInfo()
   },
 
   beforeDestroy() {
@@ -61,19 +62,19 @@ export default {
        window.onscroll = () => {
         const bottomOfWindow = (window.innerHeight + window.scrollY) >= document.body.offsetHeight
 
-         if (bottomOfWindow) {
+         if (bottomOfWindow && this.userInfo?.length === 50) {
            this.areUsersLoaded = true
          } else {
             setTimeout(() => {
-              // тут надо как-то подгружать все это дело по 20 штук
-            }, 200);
+              this.getInfo()
+            }, 1000);
            this.areUsersLoaded = false
          }
        }
     },
 
     async getInfo() {
-      const { data: { results } } = await axios.get( 'https://randomuser.me/api/?results=50&?inc=picture,name,email,registered&noinfo')
+      let { data: { results } } = await axios.get( 'https://randomuser.me/api/?results=20&?inc=picture,name,email,registered&noinfo')
 
       // sorting by time
       const participants = results.sort((a, b) => b.registered.date > a.registered.date ? 1 : -1)
@@ -94,44 +95,54 @@ export default {
       const currentMinutes = rightNow.getMinutes()
 
       // adjusting array
-      this.userInfo = users.map(el => {
-        let time
-        const userTime = new Date(el.registered.date)
+      if(this.userInfo?.length < 50) {
+        users = users.map(el => {
+          let time
+          const userTime = new Date(el.registered.date)
 
-        if (userTime.getFullYear() !== currentYear) {
-          // not in this year
-          time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })} ${userTime.getFullYear()}`
-        } else {
-          // today
-          if (currentDate === userTime.getDate()) {
-            if (currentHour === userTime.getHours()){
-              if (currentMinutes === userTime.getMinutes()) {
-                time = 'just now'
-              } else {
-                // recently
-                time = `${59 - userTime.getMinutes()}m ago`
-              }
-            } else {
-              // during the day
-              time = `${23 - userTime.getHours()}h ago`
-            }
-          } else if(currentDate - userTime.getDate() === 1) {
-            time = 'yesterday'
+          if (userTime.getFullYear() !== currentYear) {
+            // not in this year
+            time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })} ${userTime.getFullYear()}`
           } else {
-            // not recently , but in this year
-            time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })}`
+            // today
+            if (currentDate === userTime.getDate()) {
+              if (currentHour === userTime.getHours()){
+                if (currentMinutes === userTime.getMinutes()) {
+                  time = 'just now'
+                } else {
+                  // recently
+                  time = `${59 - userTime.getMinutes()}m ago`
+                }
+              } else {
+                // during the day
+                time = `${23 - userTime.getHours()}h ago`
+              }
+            } else if(currentDate - userTime.getDate() === 1) {
+              time = 'yesterday'
+            } else {
+              // not recently , but in this year
+              time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })}`
+            }
           }
-        }
 
-        return {
-          id: el.index,
-          image: el.picture.thumbnail,
-          firstName: el.name.first,
-          lastName: el.name.last,
-          email: el.email,
-          time
+          return {
+            id: el.index,
+            image: el.picture.thumbnail,
+            firstName: el.name.first,
+            lastName: el.name.last,
+            email: el.email,
+            time
+          }
+        });
+        
+        // очень костыльная проверка на кол-во пользователей
+        (!this.userInfo?.length) ? this.userInfo = users : this.userInfo.push(...users)
+        if (this.userInfo?.length > 50) {
+          do {
+            this.userInfo.pop()
+          } while (this.userInfo?.length > 50)
         }
-      })
+      }
     }
   }
 }
@@ -141,20 +152,32 @@ export default {
 <style lang="scss" scoped>
 
 .list {
+  display: table;
+  width: 90%;
   margin: 0 auto;
 
   &__titles {
-    display: flex;
+    display: grid;
+    grid-template-columns: 15% 30% 40% 15%;
+    grid-template-rows: 61px auto;
     color: #808080;
     font-size: 12px;
     line-height: 24px;
     font-weight: 400;
+
+    & span:first-child {
+      grid-column-start: 2;
+    }
   }
 
   &__participants {
     display: grid;
     grid-template-columns: 15% 30% 40% 15%;
     grid-template-rows: 61px auto;
+
+    & img {
+      border-radius: 24px;
+    }
   }
 
   &__last-message {
@@ -164,6 +187,10 @@ export default {
     color: #219653;
     border-radius: 67px;
     padding: 26px 0;
+
+    &-img {
+      margin-right: 8px;
+    }
   }
 }
 
