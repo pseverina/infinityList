@@ -36,10 +36,7 @@ export default {
     return {
       areUsersLoaded: false,
       userInfo: '',
-      users: '',
-      maxPerPage: 20,
-      observer: null
-    }
+      users: ''    }
   },
 
   beforeMount() {
