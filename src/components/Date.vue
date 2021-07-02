@@ -20,7 +20,8 @@ export default {
     return {
       currentHour: '',
       currentMinutes: '',
-      currentSeconds: ''
+      currentSeconds: '',
+      interval: ''
     }
   },
 
@@ -28,9 +29,13 @@ export default {
     this.checkTime()
   },
 
+  beforeDestroy() {
+    clearInterval(this.interval)
+  },
+
   methods: {
     checkTime() {
-      setInterval(() => {
+      this.interval = setInterval(() => {
         const date = new Date()
         this.currentHour = 23 - date.getHours()
         this.currentMinutes = 59 - date.getMinutes()

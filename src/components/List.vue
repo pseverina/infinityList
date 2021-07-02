@@ -36,11 +36,10 @@ export default {
     return {
       areUsersLoaded: false,
       userInfo: '',
-      users: ''    }
-  },
-
-  beforeMount() {
-    this.getInfo()
+      users: '',
+      interval: '',
+      time: '' 
+    }
   },
 
   mounted () {
@@ -50,96 +49,76 @@ export default {
     });
   },
 
+  created () {
+    this.getInfo()
+  },
+
   beforeDestroy() {
+    clearInterval(this.interval)
     window.removeEventListener('scroll', this.onScroll);
   },
 
   methods: {
     onScroll() {
-       window.onscroll = () => {
-        const bottomOfWindow = (window.innerHeight + window.scrollY) >= document.body.offsetHeight
+      const bottomOfWindow = (window.innerHeight + window.scrollY) >= document.body.offsetHeight;
+      (bottomOfWindow && this.userInfo?.length === 50) ? this.areUsersLoaded = true : this.areUsersLoaded = false
 
-         if (bottomOfWindow && this.userInfo?.length === 50) {
-           this.areUsersLoaded = true
-         } else {
-            setTimeout(() => {
-              this.getInfo()
-            }, 1000);
-           this.areUsersLoaded = false
-         }
-       }
+      // const list = document.querySelector('.list')
+      // const windowHeight = window.innerHeight
+      // if (list.offsetHeight > windowHeight) {
+      //   list.style.maxHeight = windowHeight - 295 + 'px'
+      // }
     },
 
     async getInfo() {
-      let { data: { results } } = await axios.get( 'https://randomuser.me/api/?results=20&?inc=picture,name,email,registered&noinfo')
+      let { data: { results } } = await axios.get( 'https://randomuser.me/api/?results=50&?inc=picture,name,email,registered&noinfo')
 
       // sorting by time
       const participants = results.sort((a, b) => b.registered.date > a.registered.date ? 1 : -1)
-      // fist call
+      // first call
       this.sortUsers(participants)
       
       // update info each minute
-      setInterval(() => {
+      this.interval = setInterval(() => {
         this.sortUsers(participants)
       }, 60000)
     },
 
     sortUsers(users) {
-      const rightNow = new Date()
-      const currentYear = rightNow.getFullYear()
-      const currentDate = rightNow.getDate()
-      const currentHour = rightNow.getHours()
-      const currentMinutes = rightNow.getMinutes()
+      this.userInfo = users.map(el => {
+        const date = +new Date()
+        const rightNow = new Date(date)
+        const userTime = new Date(el.registered.date)
 
-      // adjusting array
-      if(this.userInfo?.length < 50) {
-        users = users.map(el => {
-          let time
-          const userTime = new Date(el.registered.date)
+        const currentYear = rightNow.getFullYear() === userTime.getFullYear()
+        const currentDate = rightNow.getDate() === userTime.getDate()
+        const currentHour = rightNow.getHours() === userTime.getHours()
+        const currentMinutes = rightNow.getMinutes() === userTime.getMinutes()
+        const yesterday = currentYear && rightNow.getDate() - userTime.getDate() === 1
 
-          if (userTime.getFullYear() !== currentYear) {
-            // not in this year
-            time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })} ${userTime.getFullYear()}`
+        if (currentYear) {
+          if (currentDate && currentHour) {
+            (currentMinutes) ? this.time = 'just now' : this.time = `${59 - userTime.getMinutes()}m ago`
+          } else if (currentDate && !currentHour) {
+            this.time = `${23 - userTime.getHours()}h ago`
+          } else if (yesterday) {
+            this.time = 'yesterday'
           } else {
-            // today
-            if (currentDate === userTime.getDate()) {
-              if (currentHour === userTime.getHours()){
-                if (currentMinutes === userTime.getMinutes()) {
-                  time = 'just now'
-                } else {
-                  // recently
-                  time = `${59 - userTime.getMinutes()}m ago`
-                }
-              } else {
-                // during the day
-                time = `${23 - userTime.getHours()}h ago`
-              }
-            } else if(currentDate - userTime.getDate() === 1) {
-              time = 'yesterday'
-            } else {
-              // not recently , but in this year
-              time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })}`
-            }
+            this.time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })}`
           }
-
-          return {
-            id: el.index,
-            image: el.picture.thumbnail,
-            firstName: el.name.first,
-            lastName: el.name.last,
-            email: el.email,
-            time
-          }
-        });
-        
-        // очень костыльная проверка на кол-во пользователей
-        (!this.userInfo?.length) ? this.userInfo = users : this.userInfo.push(...users)
-        if (this.userInfo?.length > 50) {
-          do {
-            this.userInfo.pop()
-          } while (this.userInfo?.length > 50)
+        } else {
+          this.time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })} ${userTime.getFullYear()}`
         }
-      }
+
+        return {
+          id: el.index,
+          image: el.picture.thumbnail,
+          firstName: el.name.first,
+          lastName: el.name.last,
+          email: el.email,
+          time: this.time
+        }
+      })
     }
   }
 }
@@ -149,9 +128,9 @@ export default {
 <style lang="scss" scoped>
 
 .list {
-  display: table;
   width: 90%;
   margin: 0 auto;
+  overflow: hidden;
 
   &__titles {
     display: grid;
