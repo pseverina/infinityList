@@ -55,7 +55,7 @@ export default {
 
   beforeDestroy() {
     clearInterval(this.interval)
-    window.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('scroll', this.onScroll, { passive: true});
   },
 
   methods: {
@@ -76,32 +76,32 @@ export default {
       // sorting by time
       const participants = results.sort((a, b) => b.registered.date > a.registered.date ? 1 : -1)
       // first call
-      this.sortUsers(participants)
+      this.sortByTime(participants)
       
       // update info each minute
       this.interval = setInterval(() => {
-        this.sortUsers(participants)
+        this.sortByTime(participants)
       }, 60000)
     },
 
-    sortUsers(users) {
+    sortByTime(users) {
       this.userInfo = users.map(el => {
-        const date = +new Date()
+        const date = Date.now()
         const rightNow = new Date(date)
         const userTime = new Date(el.registered.date)
 
-        const currentYear = rightNow.getFullYear() === userTime.getFullYear()
-        const currentDate = rightNow.getDate() === userTime.getDate()
-        const currentHour = rightNow.getHours() === userTime.getHours()
-        const currentMinutes = rightNow.getMinutes() === userTime.getMinutes()
-        const yesterday = currentYear && rightNow.getDate() - userTime.getDate() === 1
+        const isCurrentYear = rightNow.getFullYear() === userTime.getFullYear()
+        const isCurrentDate = rightNow.getDate() === userTime.getDate()
+        const isCurrentHour = rightNow.getHours() === userTime.getHours()
+        const AreCurrentMinutes = rightNow.getMinutes() === userTime.getMinutes()
+        const isYesterday = isCurrentYear && rightNow.getDate() - userTime.getDate() === 1
 
-        if (currentYear) {
-          if (currentDate && currentHour) {
-            (currentMinutes) ? this.time = 'just now' : this.time = `${59 - userTime.getMinutes()}m ago`
-          } else if (currentDate && !currentHour) {
+        if (isCurrentYear) {
+          if (isCurrentDate && isCurrentHour) {
+            (AreCurrentMinutes) ? this.time = 'just now' : this.time = `${59 - userTime.getMinutes()}m ago`
+          } else if (isCurrentDate && !isCurrentHour) {
             this.time = `${23 - userTime.getHours()}h ago`
-          } else if (yesterday) {
+          } else if (isYesterday) {
             this.time = 'yesterday'
           } else {
             this.time = `${userTime.getDate()} ${userTime.toLocaleString('default', { month: 'short' })}`
